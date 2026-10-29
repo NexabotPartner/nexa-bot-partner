@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>NexaBot | Admin</title>
+<style>
+:root{--bg:#070c14;--card:#0e1624;--line:#1e2c42;--tx:#e9eef7;--mu:#8b9bb3;--gold:#e5b84b;--ok:#3ecf8e;--bad:#ff6b6b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:16px}
+h1{font-size:24px;margin:8px 0}h3{margin:20px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto}
+label{display:block;color:var(--mu);margin:10px 0 4px;font-size:13px}
+input{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px}
+button{background:var(--gold);color:#1a1300;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;font-size:13px}
+button.no{background:none;color:var(--bad);border:1px solid var(--bad)}
+button:disabled{opacity:.5}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:700px}
+td,th{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top;word-break:break-all}
+th{color:var(--mu);font-weight:500}
+.tag{color:var(--gold)}.ok{color:var(--ok)}.bad{color:var(--bad)}.empty{color:var(--mu);font-style:italic}
+.act{display:flex;gap:6px;flex-wrap:wrap}
+#app{display:none}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--card);border:1px solid var(--gold);padding:10px 16px;border-radius:8px;display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>NexaBot admin</h1>
+<div id="login" class="card" style="max-width:380px">
+  <label for="em" style="margin-top:0">Admin email</label><input id="em" type="email" autocomplete="username">
+  <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
+  <button id="go" style="margin-top:14px;width:100%">Log in</button>
+</div>
+<div id="app">
+  <p style="color:var(--mu)">Verify a payment only after you see the money in your wallet. Verifying starts the user's 30 days and gives their referrer 1%.</p>
+  <h3>Payments</h3><div class="card" id="pays"></div>
+  <h3>Withdrawals</h3><div class="card" id="wds"></div>
+  <p><button id="refresh">Refresh</button> <button class="no" id="out">Log out</button></p>
+</div>
+</div>
+<div id="toast" role="status"></div>
+<script>
+const SUPABASE_URL = "https://fwidwenwqvfcmuacxhry.supabase.co";
+const SUPABASE_KEY = "sb_publishable_88YJvBuX6NhjYlyg-GVtVQ_nEn6zWyx";
+const $ = s => document.querySelector(s);
+const esc = t => String(t).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fd = t => new Date(t).toLocaleString(undefined, {day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"});
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+let T = null;
+const toast = m => { const t = $("#toast"); t.textContent = m; t.style.display = "block"; clearTimeout(toast.id); toast.id = setTimeout(() => t.style.display = "none", 3000); };
+
+async function rpc(fn, args) {
+  const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/" + fn, {method: "POST",
+    headers: {"Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + T}, body: JSON.stringify(args || {})});
+  const t = await r.text(); let d = null; try { d = t ? JSON.parse(t) : null; } catch (e) {}
+  if (!r.ok) throw new Error((d && d.message) || "Request failed. Log in again.");
+  return d;
+}
+$("#go").onclick = async e => {
+  if (SUPABASE_URL.startsWith("PASTE")) return toast("Add the Supabase URL and key in the code first.");
+  e.target.disabled = true;
+  try {
+    const r = await fetch(SUPABASE_URL + "/auth/v1/token?grant_type=password", {method: "POST",
+      headers: {"Content-Type": "application/json", apikey: SUPABASE_KEY}, body: JSON.stringify({email: $("#em").value.trim(), password: $("#pw").value})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error_description || d.msg || "Login failed");
+    T = d.access_token; $("#pw").value = ""; $("#login").style.display = "none"; $("#app").style.display = "block"; await load();
+  } catch (err) { toast(err.message); }
+  e.target.disabled = false;
+};
+$("#out").onclick = () => { T = null; $("#app").style.display = "none"; $("#login").style.display = "block"; };
+$("#refresh").onclick = () => load();
+
+async function load() {
+  try {
+    const [p, w] = await Promise.all([rpc("admin_payments"), rpc("admin_withdrawals")]);
+    $("#pays").innerHTML = p.length ? `<table><tr><th>Date</th><th>User</th><th>Referred by</th><th>Plan</th><th>Coin</th><th>Transaction hash</th><th>Status</th><th></th></tr>${p.map(x => `<tr>
+      <td>${fd(x.created_at)}</td><td>${esc(x.username)}</td><td>${x.referrer ? esc(x.referrer) : "-"}</td><td>${esc(x.plan)} ($${x.price})</td><td>${esc(x.coin)}</td><td>${esc(x.tx)}</td>
+      <td class="${x.status === "verified" ? "ok" : x.status === "rejected" ? "bad" : "tag"}">${cap(x.status)}</td>
+      <td>${x.status === "pending" ? `<div class="act"><button data-a="v" data-id="${x.id}">Verify</button><button class="no" data-a="rp" data-id="${x.id}">Reject</button></div>` : ""}</td></tr>`).join("")}</table>` : `<span class="empty">No payments yet.</span>`;
+    $("#wds").innerHTML = w.length ? `<table><tr><th>Date</th><th>User</th><th>Amount</th><th>Send (after 5% fee)</th><th>Coin</th><th>Wallet address</th><th>Status</th><th></th></tr>${w.map(x => `<tr>
+      <td>${fd(x.created_at)}</td><td>${esc(x.username)}</td><td>$${x.amount}</td><td><b>$${x.net}</b></td><td>${esc(x.coin)}</td><td>${esc(x.address)}</td>
+      <td class="${x.status === "paid" ? "ok" : x.status === "rejected" ? "bad" : "tag"}">${cap(x.status)}</td>
+      <td>${x.status === "pending" ? `<div class="act"><button data-a="paid" data-id="${x.id}">Mark paid</button><button class="no" data-a="rw" data-id="${x.id}">Reject</button></div>` : ""}</td></tr>`).join("")}</table>` : `<span class="empty">No withdrawals yet.</span>`;
+  } catch (err) { toast(err.message); }
+}
+$("#app").onclick = async e => {
+  const a = e.target.dataset.a, id = e.target.dataset.id; if (!a) return;
+  const msg = {v: "Verify this payment? The user's plan starts and the referrer gets 1%.", rp: "Reject this payment?", paid: "Mark as paid? Only do this after you have sent the coins.", rw: "Reject this withdrawal? The amount returns to the user's balance."}[a];
+  if (!confirm(msg)) return;
+  e.target.disabled = true;
+  try {
+    if (a === "v") await rpc("admin_verify", {p_id: id});
+    else if (a === "rp") await rpc("admin_reject_payment", {p_id: id});
+    else await rpc("admin_set_withdrawal", {p_id: id, p_status: a === "paid" ? "paid" : "rejected"});
+    toast("Done."); await load();
+  } catch (err) { toast(err.message); e.target.disabled = false; }
+};
+</script>
+</body>
+</html>
