@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexaBot | Partner Program</title>
+<style>
+:root{--bg:#070c14;--card:#0e1624;--line:#1e2c42;--tx:#e9eef7;--mu:#8b9bb3;--gold:#e5b84b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.55 Georgia,"Times New Roman",serif}
+h1,h3,button,input,select,nav button,.num,table,label{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 0 16px}
+.logo{font:700 20px system-ui,sans-serif;color:var(--gold)}
+nav{display:none;gap:4px;flex-wrap:wrap}
+nav button{background:none;border:0;color:var(--mu);padding:8px 14px;border-radius:8px;font-size:14px;cursor:pointer}
+nav button.on{background:var(--card);color:var(--tx);box-shadow:inset 0 -2px 0 var(--gold)}
+h1{font-size:30px;line-height:1.2;margin:8px 0 6px}
+p.sub{color:var(--mu);margin:0 0 20px;max-width:60ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+.plan .num{font-size:34px;font-weight:700;color:var(--gold)}
+.plan ul{padding-left:18px;color:var(--mu);margin:10px 0 16px}
+.plan.top{border-color:var(--gold)}
+button.btn{background:var(--gold);color:#1a1300;border:0;border-radius:8px;padding:10px 16px;font-weight:700;font-size:14px;cursor:pointer;width:100%}
+button.ghost{background:none;color:var(--tx);border:1px solid var(--line);width:auto}
+button:disabled{opacity:.5;cursor:wait}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+label{display:block;font-size:13px;color:var(--mu);margin:12px 0 4px}
+input,select{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px}
+.stat .num{font-size:26px;font-weight:700}.stat span{color:var(--mu);font-size:13px;font-family:system-ui,sans-serif}
+.link{display:flex;gap:8px;margin-top:6px}.link input{flex:1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);word-break:break-all}
+th{color:var(--mu);font-weight:500}
+.tag{color:var(--gold)}.empty{color:var(--mu);font-style:italic}
+.note{font-size:13px;color:var(--mu);margin-top:10px}
+section{display:none}section.on{display:block}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:12px}
+dialog{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:12px;max-width:420px;width:92%}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--card);border:1px solid var(--gold);padding:10px 16px;border-radius:8px;font:14px system-ui,sans-serif;display:none;max-width:90%}
+.scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="logo">NexaBot Partners</div>
+  <nav id="nav">
+    <button data-v="plans" class="on">Plans</button>
+    <button data-v="ref">Referral</button>
+    <button data-v="wd">Withdraw</button>
+    <button id="out">Log out</button>
+  </nav>
+</header>
+
+<section id="auth" class="on">
+  <h1>Start with NexaBot</h1>
+  <p class="sub">Pick a username and a 4 to 6 digit PIN. No email needed. There is no PIN reset, so remember it.</p>
+  <div class="card" style="max-width:380px">
+    <label for="aU" style="margin-top:0">Username</label><input id="aU" autocomplete="username" autocapitalize="none" maxlength="20">
+    <label for="aP">PIN</label><input id="aP" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password">
+    <p class="note" id="aRef"></p>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" id="bIn" style="flex:1">Log in</button><button class="btn ghost" id="bUp" style="flex:1">Create account</button></div>
+  </div>
+</section>
+
+<section id="plans">
+  <h1>Choose your plan</h1>
+  <p class="sub">Pay in crypto. Your plan starts when we verify the transaction and lasts 1 year.</p>
+  <div class="card" id="active" style="margin-bottom:12px"></div>
+  <div class="grid" id="planGrid"></div>
+  <h3>Transaction history</h3>
+  <div class="card scroll" id="payList"></div>
+</section>
+
+<section id="ref">
+  <h1>Earn when your friends subscribe</h1>
+  <p class="sub">Share your link. When someone who joined through it buys a plan, you earn <b id="pct"></b> of the plan price on every purchase.</p>
+  <div class="grid">
+    <div class="card stat"><div class="num" id="sRefs">0</div><span>Referred purchases</span></div>
+    <div class="card stat"><div class="num" id="sEarn">$0</div><span>Total earned</span></div>
+    <div class="card stat"><div class="num" id="sBal">$0</div><span>Available to withdraw</span></div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <label for="refLink" style="margin-top:0">Your referral link</label>
+    <div class="link"><input id="refLink" readonly><button class="btn ghost" id="copy">Copy link</button></div>
+    <p class="note">Commission is added only after we verify the referred person's payment. There is no bonus for deposits alone.</p>
+  </div>
+</section>
+
+<section id="wd">
+  <h1>Withdraw earnings</h1>
+  <p class="sub">Requests are reviewed manually and paid in the coin you choose.</p>
+  <div class="two">
+    <div class="card">
+      <b>Available: <span id="wBal">$0</span></b>
+      <label for="wAmt">Amount in USD</label><input id="wAmt" type="number" min="1" step="0.01" inputmode="decimal">
+      <label for="wCoin">Coin and network</label><select id="wCoin"></select>
+      <label for="wAddr">Your wallet address</label><input id="wAddr" autocomplete="off">
+      <p class="note">Withdrawal fee: <span id="feePct"></span>. You receive: <b id="wNet">$0</b></p>
+      <p class="note">Minimum withdrawal: <span id="minW"></span>. Check the address and network carefully, crypto payments cannot be reversed.</p>
+      <button class="btn" id="wBtn" style="margin-top:12px">Request withdrawal</button>
+    </div>
+    <div class="card scroll"><b>Your requests</b><div id="wdList" style="margin-top:8px"></div></div>
+  </div>
+</section>
+</div>
+
+<dialog id="dlg">
+  <h3 id="dTitle" style="margin-top:0"></h3>
+  <label for="dCoin">Coin and network</label><select id="dCoin"></select>
+  <label for="dAddr">Send exactly the plan price to this address</label><input id="dAddr" readonly>
+  <label for="dTx">Transaction hash</label><input id="dTx" autocomplete="off">
+  <div style="display:flex;gap:8px;margin-top:16px">
+    <button class="btn ghost" id="dCancel" style="flex:1">Cancel</button>
+    <button class="btn" id="dSend" style="flex:1">Submit for verification</button>
+  </div>
+</dialog>
+<div id="toast" role="status"></div>
+
+<script>
+/* ---- Edit these ---- */
+const SUPABASE_URL = "https://fwidwenwqvfcmuacxhry.supabase.co";
+const SUPABASE_KEY = "sb_publishable_88YJvBuX6NhjYlyg-GVtVQ_nEn6zWyx";
+const COMMISSION = 0.01, WITHDRAW_FEE = 0.05, MIN_WITHDRAW = 20, TERM_DAYS = 365; // must match setup.sql
+const WALLETS = {
+  "Solana (SOL)":"7RGXhC84w57h6DpQ9kXuJxaYK3G1W7kiDBHy4hzECcL7",
+  "USDT (BEP20)":"0xc6c81b9829a62a69badfaa1f2a91a4f5a74734fa",
+  "USDT (TRC20)":"TD3msbNYtr1jnQgvwPDHnN19hdfW3XXpX7"
+};
+const PLANS = [
+  {n:"Starter",p:99,f:["XAUUSD workspace","Basic bot settings","Email support"]},
+  {n:"Pro",p:399,f:["Everything in Starter","More symbols and timeframes","Priority support"],top:true},
+  {n:"Elite",p:799,f:["Everything in Pro","Advanced bot settings","Faster support replies"]},
+  {n:"Ultimate",p:1999,f:["Everything in Elite","Full feature access","Dedicated support"]}
+];
+/* -------------------- */
+const $ = s => document.querySelector(s), DAY = 864e5, COINS = Object.keys(WALLETS);
+const esc = t => String(t).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const usd = n => "$" + (Math.round(n * 100) / 100).toLocaleString();
+const fd = t => new Date(t).toLocaleDateString(undefined, {day: "numeric", month: "short", year: "numeric"});
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+let U = null, D = null, plan = null, busy = false;
+try { const s = JSON.parse(sessionStorage.getItem("nx")); if (s && s.u) U = s; } catch (e) {}
+let incoming = "";
+try {
+  const r = new URLSearchParams(location.search).get("ref");
+  if (r && /^[A-Za-z0-9]{4,12}$/.test(r)) localStorage.setItem("nx_ref", r.toUpperCase());
+  incoming = localStorage.getItem("nx_ref") || "";
+} catch (e) {}
+if (incoming) $("#aRef").textContent = "You joined with referral code " + incoming + ".";
+
+const toast = m => { const t = $("#toast"); t.textContent = m; t.style.display = "block"; clearTimeout(toast.id); toast.id = setTimeout(() => t.style.display = "none", 3000); };
+async function rpc(fn, args) {
+  if (SUPABASE_URL.includes("PASTE")) return {error: "Site is not set up yet. Add the Supabase URL and key in the code."};
+  try {
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/" + fn, {method: "POST",
+      headers: Object.assign({"Content-Type": "application/json", apikey: SUPABASE_KEY}, SUPABASE_KEY.startsWith("eyJ") ? {Authorization: "Bearer " + SUPABASE_KEY} : {}), body: JSON.stringify(args)});
+    const d = await r.json();
+    return r.ok ? d : {error: d.message || "Something went wrong"};
+  } catch (e) { return {error: "Network problem. Check your internet and try again."}; }
+}
+async function run(btn, fn) { if (busy) return; busy = true; btn.disabled = true; try { await fn(); } finally { busy = false; btn.disabled = false; } }
+
+function show(v) {
+  document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === v));
+  document.querySelectorAll("#nav button[data-v]").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+}
+$("#nav").onclick = e => { if (e.target.dataset.v) show(e.target.dataset.v); };
+function logout() { U = D = null; try { sessionStorage.removeItem("nx"); } catch (e) {} $("#nav").style.display = "none"; show("auth"); }
+$("#out").onclick = logout;
+
+async function load() {
+  const d = await rpc("dashboard", {p_user: U.u, p_pin: U.p});
+  if (d.error) { logout(); return toast(d.error); }
+  D = d; $("#nav").style.display = "flex"; render();
+  if (!document.querySelector("section.on:not(#auth)")) show("plans");
+}
+async function auth(fnName, btn) {
+  const u = $("#aU").value.trim().toLowerCase(), p = $("#aP").value.trim();
+  if (!u || !p) return toast("Enter your username and PIN.");
+  if (fnName === "signup") {
+    const r = await rpc("signup", {p_user: u, p_pin: p, p_ref: incoming || null});
+    if (r.error) return toast(r.error);
+    toast("Account created.");
+  }
+  U = {u, p}; try { sessionStorage.setItem("nx", JSON.stringify(U)); } catch (e) {}
+  await load(); $("#aP").value = "";
+}
+$("#bIn").onclick = e => run(e.target, () => auth("login"));
+$("#bUp").onclick = e => run(e.target, () => auth("signup"));
+
+function render() {
+  $("#planGrid").innerHTML = PLANS.map((p, i) => `<div class="card plan${p.top ? " top" : ""}">
+    <h3 style="margin:0">${p.n}</h3><div class="num">${usd(p.p)}</div>
+    <ul>${p.f.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+    <button class="btn" data-i="${i}">Choose ${p.n}</button></div>`).join("");
+  $("#payList").innerHTML = D.payments.length
+    ? `<table><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Coin</th><th>Transaction</th><th>Status</th></tr>${D.payments.map(x => `<tr><td>${fd(x.created_at)}</td><td>${esc(x.plan)}</td><td>${usd(x.price)}</td><td>${esc(x.coin)}</td><td>${esc(x.tx.length > 16 ? x.tx.slice(0, 8) + "..." + x.tx.slice(-6) : x.tx)}</td><td class="tag">${x.status === "pending" ? "Pending verification" : cap(x.status)}</td></tr>`).join("")}</table>`
+    : `<span class="empty">No transactions yet. Pick a plan above to start.</span>`;
+  const lastV = D.payments.filter(x => x.verified_at).sort((a, b) => Date.parse(b.verified_at) - Date.parse(a.verified_at))[0];
+  let act;
+  if (lastV) {
+    const end = Date.parse(lastV.verified_at) + TERM_DAYS * DAY, left = Math.ceil((end - Date.now()) / DAY);
+    act = left > 0
+      ? `<b>${esc(lastV.plan)} plan is active</b><p class="note">${left} day${left === 1 ? "" : "s"} left. Ends on ${fd(end)}.</p>`
+      : `<b>${esc(lastV.plan)} plan expired</b><p class="note">It ended on ${fd(end)}. Renew to continue.</p>`;
+    act += `<button class="btn" id="renew" data-i="${PLANS.findIndex(p => p.n === lastV.plan)}" style="margin-top:8px;max-width:220px">Renew ${esc(lastV.plan)}</button>`;
+  } else act = `<b>No active plan</b><p class="note">Your plan starts when we verify your payment and lasts 1 year.</p>`;
+  $("#active").innerHTML = act;
+  $("#pct").textContent = Math.round(COMMISSION * 100) + "%";
+  $("#sRefs").textContent = D.refs; $("#sEarn").textContent = usd(D.earned); $("#sBal").textContent = usd(D.balance);
+  $("#wBal").textContent = usd(D.balance); $("#minW").textContent = usd(MIN_WITHDRAW); $("#feePct").textContent = Math.round(WITHDRAW_FEE * 100) + "%";
+  $("#refLink").value = location.origin + location.pathname + "?ref=" + D.ref_code;
+  $("#wdList").innerHTML = D.withdrawals.length
+    ? `<table><tr><th>Date</th><th>Requested</th><th>You get</th><th>Status</th></tr>${D.withdrawals.map(x => `<tr><td>${fd(x.created_at)}</td><td>${usd(x.amount)}</td><td>${usd(x.net)}</td><td class="tag">${cap(x.status)}</td></tr>`).join("")}</table>`
+    : `<span class="empty">No withdrawals yet.</span>`;
+}
+
+const opts = COINS.map(c => `<option>${esc(c)}</option>`).join("");
+$("#dCoin").innerHTML = opts; $("#wCoin").innerHTML = opts;
+function openPlan(i) {
+  if (!PLANS[i]) return;
+  plan = PLANS[i]; $("#dTitle").textContent = plan.n + " plan, " + usd(plan.p);
+  $("#dAddr").value = WALLETS[$("#dCoin").value]; $("#dTx").value = ""; $("#dlg").showModal();
+}
+$("#planGrid").onclick = e => { if (e.target.dataset.i !== undefined) openPlan(+e.target.dataset.i); };
+$("#active").onclick = e => { if (e.target.id === "renew") openPlan(+e.target.dataset.i); };
+$("#dCoin").onchange = () => $("#dAddr").value = WALLETS[$("#dCoin").value];
+$("#dCancel").onclick = () => $("#dlg").close();
+$("#dSend").onclick = e => run(e.target, async () => {
+  const r = await rpc("submit_payment", {p_user: U.u, p_pin: U.p, p_plan: plan.n, p_coin: $("#dCoin").value, p_tx: $("#dTx").value});
+  if (r.error) return toast(r.error);
+  $("#dlg").close(); await load(); toast("Submitted. We will verify it soon.");
+});
+
+$("#copy").onclick = async () => {
+  try { await navigator.clipboard.writeText($("#refLink").value); toast("Link copied."); }
+  catch (e) { $("#refLink").select(); toast("Select and copy the link."); }
+};
+$("#wAmt").oninput = () => { const a = parseFloat($("#wAmt").value) || 0; $("#wNet").textContent = usd(a - a * WITHDRAW_FEE); };
+$("#wBtn").onclick = e => run(e.target, async () => {
+  const r = await rpc("request_withdrawal", {p_user: U.u, p_pin: U.p, p_amount: parseFloat($("#wAmt").value) || 0, p_coin: $("#wCoin").value, p_addr: $("#wAddr").value});
+  if (r.error) return toast(r.error);
+  $("#wAmt").value = ""; $("#wAddr").value = ""; $("#wNet").textContent = "$0";
+  await load(); toast("Withdrawal requested. You will receive " + usd(r.net) + ".");
+});
+
+if (U) load();
+</script>
+</body>
+</html>
